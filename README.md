@@ -22,10 +22,15 @@ python3 -m unittest discover -s tests -v
 
 ## 现在的行为
 
-- `encode` 直接拼 `key=value`：`msg=hello world` 输出 `msg=hello world`（没有引号也没有转义）。
-- `decode` 用 `line.split()`：引号里的空格被当成分隔符，`msg="hello world" x=1` 拆成三段，
-  而且值里的引号只用 `strip('"')` 去掉，转义不还原。
-- 重复键是追加的（这点碰巧对），但没有任何错误定位能力。
+- `encode` 按口径加引号与转义：`msg=hello world` 输出 `msg="hello world"`；
+  值里的 `"` 与 `\` 写成 `\"` 与 `\\`；裸键（值为 `True`）只写键名。
+- `decode` 按引号感知分词：`msg="hello world" x=1` 解出 `("msg","hello world")` 与 `("x","1")` 两对；
+  引号内的转义会还原。
+- 重复键按出现顺序全部保留；`--flatten` 时按最后一次取值。
+- 错误带 0 起始的字符位置（`LogfmtError.position`）：未闭合引号、非法转义、键里含空白/控制字符等。
+- 流式接口 `encode_lines` / `decode_lines` 单遍逐行处理，内存 O(一行)。
+- `logfmtkit/reference.py` 是逐字符状态机的参考实现，`tests/test_reference_compare.py`
+  对样例与随机 1 万组键值对逐字节比对两个实现的编码结果、解码结果与错误位置。
 
 ## 计划新增的能力
 
