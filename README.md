@@ -20,12 +20,15 @@ python3 -m unittest discover -s tests -v
 - 错误要带位置：未闭合的引号、非法转义（`\x`）、键里出现空白的 token 都要报错并给出第几个字符。
 - 规模：100 MB 单遍流式编解码，内存 O(一行)。
 
-## 现在的行为
+## 实现
 
-- `encode` 直接拼 `key=value`：`msg=hello world` 输出 `msg=hello world`（没有引号也没有转义）。
-- `decode` 用 `line.split()`：引号里的空格被当成分隔符，`msg="hello world" x=1` 拆成三段，
-  而且值里的引号只用 `strip('"')` 去掉，转义不还原。
-- 重复键是追加的（这点碰巧对），但没有任何错误定位能力。
+- `encode`：值里有空白、`"`、`\` 或控制字符时加引号，内部 `"`、`\` 转义为 `\"`、`\\`；
+  裸键（值为 `True`）只写键名；键里含空白、控制字符、`"`、`=` 会报错并给出字符位置（从 0 计）。
+- `decode`：引号感知的单遍扫描；未闭合引号、非法转义（`\x`）、键里含控制字符、
+  引号后紧跟非空白，都会报 `LogfmtError` 并带 `position`。
+- `decode_stream` / `encode_stream`：逐行流式编解码，内存 O(一行)。
+- `logfmtkit/reference.py` 是逐字符状态机的参考实现，测试里与 `codec` 逐字节对照
+  （1 万组随机键值对的编解码结果，以及随机变异输入的错误位置）。
 
 ## 计划新增的能力
 
@@ -45,7 +48,8 @@ msg="hello world"
 ## 目录
 
 ```
-logfmtkit/codec.py   编解码与转义
-logfmtkit/cli.py     命令行入口
-tests/               unittest 用例
+logfmtkit/codec.py      编解码与转义（引号感知、带位置的错误）
+logfmtkit/reference.py  逐字符状态机参考实现（对照测试用）
+logfmtkit/cli.py        命令行入口
+tests/                  unittest 用例（含 1 万组随机对照）
 ```
